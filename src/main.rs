@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+//use std::os::linux::process;
+use std::process;
 use std::{fs, io};
 use std::path::PathBuf;
 use std::string::*;
@@ -94,7 +96,6 @@ fn get_all_paths_in_map_with_ext(sp: PathBuf, ext: String) -> HashMap<String, Ha
 
 
 
-
 fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String>>) {
     if makedirs {
         match fs::create_dir("other") {
@@ -115,10 +116,12 @@ fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String
             println!("{:#?}", k.split(".").collect::<Vec<_>>().first().unwrap());
             let mut cnt: i32 = 1;
             for i in v {
-                println!("{}", add_number_to_filename(i.to_string(), cnt));
+                //println!("{}", add_number_to_filename(i.to_string(), cnt));
                 if makedirs {
-                    println!("{} -> {:?}", i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
-                    fs::copy(i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
+                    match fs::copy(i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap()) {
+                        Err(why) => println!("! {:?}", why.kind()),
+                        Ok(_) => println!("{} -> {:?}", i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap()), 
+                    }
                 }
                 cnt += 1;
                 // copy i to new path
@@ -129,8 +132,10 @@ fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String
                 for i in v {
                     //println!("{}", add_number_to_filename(i.to_string(), cnt));
                     if makedirs {
-                        //println!("{} -> {:?}", i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
-                        fs::copy(i.to_string(), "other/".to_owned() + i.to_string().split("/").collect::<Vec<_>>().last().unwrap());
+                        match fs::copy(i.to_string(), "other/".to_owned() + i.to_string().split("/").collect::<Vec<_>>().last().unwrap()) {
+                            Err(why) => println!("! {:?}", why.kind()),
+                            Ok(_) => println!("{} -> {:?}", i.to_string(), "other/".to_owned() + &i.to_string().split("/").collect::<Vec<_>>().last().unwrap()),
+                        }
                     }
                     // copy i to new path
                 }
