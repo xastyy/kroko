@@ -50,7 +50,7 @@ fn get_all_paths_in_map(sp: PathBuf) -> HashMap<String, HashSet<String>>{
         for p in f {
             let path = p.into_os_string().into_string().unwrap();
             let path_segments = path.as_str().split("/").collect::<Vec<_>>(); 
-            println!("{:?}", path_segments);
+            //println!("{:?}", path_segments);
             let filename = &path_segments.last().unwrap().to_string();
             if !all_paths.contains_key(filename) {
                 all_paths.insert(filename.to_string(),HashSet::new());
@@ -77,7 +77,7 @@ fn get_all_paths_in_map_with_ext(sp: PathBuf, ext: String) -> HashMap<String, Ha
             let path_segments = path.as_str().split("/").collect::<Vec<_>>(); 
             let extension = path_segments.last().unwrap().split(".").collect::<Vec<_>>();
             if extension.last().unwrap().to_string() == ext.to_string() {
-                println!("{:?}", path_segments);
+                //println!("{:?}", path_segments);
                 let filename = &path_segments.last().unwrap().to_string();
                 if !all_paths.contains_key(filename) {
                     all_paths.insert(filename.to_string(),HashSet::new());
@@ -106,15 +106,35 @@ fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String
     for (k, v) in paths.iter() {
         if v.len() > 1 {
             // make directory for key
-            println!("{:#?}", k.split(".").collect::<Vec<_>>().first());
+            if makedirs {
+                match fs::create_dir(k.split(".").collect::<Vec<_>>().first().unwrap()) {
+                    Err(why) => println!("! {:?}", why.kind()),
+                    Ok(_) => {},
+                }
+            }
+            println!("{:#?}", k.split(".").collect::<Vec<_>>().first().unwrap());
             let mut cnt: i32 = 1;
             for i in v {
                 println!("{}", add_number_to_filename(i.to_string(), cnt));
+                if makedirs {
+                    println!("{} -> {:?}", i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
+                    fs::copy(i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
+                }
                 cnt += 1;
                 // copy i to new path
             }
         } else {
             // copy the single value to the 'other' folder
+            if makedirs {
+                for i in v {
+                    //println!("{}", add_number_to_filename(i.to_string(), cnt));
+                    if makedirs {
+                        //println!("{} -> {:?}", i.to_string(), k.split(".").collect::<Vec<_>>().first().unwrap().to_string() + "/" + &add_number_to_filename(i.to_string(), cnt).split("/").collect::<Vec<_>>().last().unwrap());
+                        fs::copy(i.to_string(), "other/".to_owned() + i.to_string().split("/").collect::<Vec<_>>().last().unwrap());
+                    }
+                    // copy i to new path
+                }
+            }
         }
     }
 }
@@ -152,7 +172,6 @@ fn main() {
             samples_path = PathBuf::from(p);
             grab_files_into_folders(createdirs, get_all_paths_in_map(fs::canonicalize(samples_path).unwrap()));
         },
-        // one command and one argument passed kroko
         4 => {
             let cmd = &args[1];
             let t = &args[2];
