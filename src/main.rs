@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::{fs, io};
 use std::path::PathBuf;
 use std::string::*;
+use std::env;
 
 
 fn get_paths(p: PathBuf) -> Result<Vec<PathBuf>, io::Error> {
@@ -38,18 +39,18 @@ fn add_number_to_filename(path: String, number: i32) -> String {
     first_half + "." + &split_path.last().unwrap().to_string()
 }
 
-fn main() {
+
+fn get_all_paths_in_map(sp: PathBuf) -> HashMap<String, HashSet<String>>{
     let mut all_paths: HashMap<String, HashSet<String>> = HashMap::new();
-    let samples_path = PathBuf::from(r"/home/bindi/kroko_packs/Hard House");
-    let sample_folders = get_paths(samples_path).unwrap();
+    let sample_folders = get_paths(sp).unwrap();
     for e in sample_folders {
         let f = get_paths(e).unwrap();
         for p in f {
             let path = p.into_os_string().into_string().unwrap();
             let path_segments = path.as_str().split("/").collect::<Vec<_>>(); 
             let extension = path_segments.last().unwrap().split(".").collect::<Vec<_>>();
-            if extension.last().unwrap().to_string() == "wav".to_string() {
-                //println!("{:?}", path_segments);
+            if extension.last().unwrap().to_string() == "txt".to_string() { // TODO: add wav as param and optional
+                println!("{:?}", path_segments);
                 let filename = &path_segments.last().unwrap().to_string();
                 if !all_paths.contains_key(filename) {
                     all_paths.insert(filename.to_string(),HashSet::new());
@@ -61,19 +62,19 @@ fn main() {
             }
         }
     }
-    //println!("\n{:?}", all_paths);
-    //println!("\n");
+    all_paths
+}
 
-    //these where from the for loop below
-    //println!("{:?}: {:?}", k, v.len());
-    //println!("{:?}", k.split(".").collect::<Vec<_>>().first());
 
-    match fs::create_dir("other") {
-        Err(why) => println!("! {:?}", why.kind()),
-        Ok(_) => {},
+fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String>>) {
+    if makedirs {
+        match fs::create_dir("other") {
+            Err(why) => println!("! {:?}", why.kind()),
+            Ok(_) => {},
+        }
     }
 
-    for (k, v) in all_paths.iter() {
+    for (k, v) in paths.iter() {
         if v.len() > 1 {
             // make directory for key
             println!("{:#?}", k.split(".").collect::<Vec<_>>().first());
@@ -84,8 +85,49 @@ fn main() {
                 // copy i to new path
             }
         } else {
-            // copy the single value to the only once folder
+            // copy the single value to the 'other' folder
         }
     }
 }
 
+
+fn main() {
+    let mut createdirs: bool = false;
+    let mut samples_path: PathBuf = PathBuf::from(r"/home/bindi/private/code/rust/kroko_crawler/test"); // /home/bindi/kroko_packs/Hard House
+    let args: Vec<String> = env::args().collect();
+    match args.len() {
+        // no arguments passed
+        1 => {
+            println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+        },
+        // one argument passed
+        2 => {
+            let p = &args[1];
+            //samples_path = p.split("/").collect();
+            samples_path = PathBuf::from(p);
+            println!("{:?}", samples_path);
+            grab_files_into_folders(createdirs, get_all_paths_in_map(fs::canonicalize(&samples_path).unwrap()));
+            
+        },
+        // one command and one argument passed
+        3 => {
+            let cmd = &args[1];
+            let p = &args[2];
+            match &cmd[..] {
+                "-c" => createdirs = true,
+                _ => {
+                    eprintln!("error: invalid command");
+                    println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+                },
+            }
+            samples_path = PathBuf::from(p);
+            grab_files_into_folders(createdirs, get_all_paths_in_map(fs::canonicalize(samples_path).unwrap()));
+        },
+        // all the other cases
+        _ => {
+            // show a help message
+            println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+        }
+    }
+    
+}
