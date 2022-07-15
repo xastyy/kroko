@@ -40,6 +40,8 @@ fn add_number_to_filename(path: String, number: i32) -> String {
 }
 
 
+
+
 fn get_all_paths_in_map(sp: PathBuf) -> HashMap<String, HashSet<String>>{
     let mut all_paths: HashMap<String, HashSet<String>> = HashMap::new();
     let sample_folders = get_paths(sp).unwrap();
@@ -48,8 +50,33 @@ fn get_all_paths_in_map(sp: PathBuf) -> HashMap<String, HashSet<String>>{
         for p in f {
             let path = p.into_os_string().into_string().unwrap();
             let path_segments = path.as_str().split("/").collect::<Vec<_>>(); 
+            println!("{:?}", path_segments);
+            let filename = &path_segments.last().unwrap().to_string();
+            if !all_paths.contains_key(filename) {
+                all_paths.insert(filename.to_string(),HashSet::new());
+                all_paths.get_mut(filename).unwrap().insert(path);
+
+            } else {
+                all_paths.get_mut(filename).unwrap().insert(path);
+            }
+        }
+    }
+
+
+    all_paths
+}
+
+
+fn get_all_paths_in_map_with_ext(sp: PathBuf, ext: String) -> HashMap<String, HashSet<String>>{
+    let mut all_paths: HashMap<String, HashSet<String>> = HashMap::new();
+    let sample_folders = get_paths(sp).unwrap();
+    for e in sample_folders {
+        let f = get_paths(e).unwrap();
+        for p in f {
+            let path = p.into_os_string().into_string().unwrap();
+            let path_segments = path.as_str().split("/").collect::<Vec<_>>(); 
             let extension = path_segments.last().unwrap().split(".").collect::<Vec<_>>();
-            if extension.last().unwrap().to_string() == "txt".to_string() { // TODO: add wav as param and optional
+            if extension.last().unwrap().to_string() == ext.to_string() {
                 println!("{:?}", path_segments);
                 let filename = &path_segments.last().unwrap().to_string();
                 if !all_paths.contains_key(filename) {
@@ -59,11 +86,13 @@ fn get_all_paths_in_map(sp: PathBuf) -> HashMap<String, HashSet<String>>{
                 } else {
                     all_paths.get_mut(filename).unwrap().insert(path);
                 }
-            }
+            } 
         }
     }
     all_paths
 }
+
+
 
 
 fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String>>) {
@@ -93,12 +122,13 @@ fn grab_files_into_folders(makedirs: bool, paths: HashMap<String, HashSet<String
 
 fn main() {
     let mut createdirs: bool = false;
-    let mut samples_path: PathBuf = PathBuf::from(r"/home/bindi/private/code/rust/kroko_crawler/test"); // /home/bindi/kroko_packs/Hard House
+    let samples_path: PathBuf; //= PathBuf::from(r"/home/bindi/private/code/rust/kroko_crawler/test"); // /home/bindi/kroko_packs/Hard House
+    let filetype: String;
     let args: Vec<String> = env::args().collect();
     match args.len() {
         // no arguments passed
         1 => {
-            println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+            println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
         },
         // one argument passed
         2 => {
@@ -109,7 +139,6 @@ fn main() {
             grab_files_into_folders(createdirs, get_all_paths_in_map(fs::canonicalize(&samples_path).unwrap()));
             
         },
-        // one command and one argument passed
         3 => {
             let cmd = &args[1];
             let p = &args[2];
@@ -117,16 +146,57 @@ fn main() {
                 "-c" => createdirs = true,
                 _ => {
                     eprintln!("error: invalid command");
-                    println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+                    println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
                 },
             }
             samples_path = PathBuf::from(p);
             grab_files_into_folders(createdirs, get_all_paths_in_map(fs::canonicalize(samples_path).unwrap()));
         },
+        // one command and one argument passed kroko
+        4 => {
+            let cmd = &args[1];
+            let t = &args[2];
+            let p = &args[3];
+            match &cmd[..] {
+                "-f" => {
+                    filetype = t.to_string();
+                    samples_path = PathBuf::from(p);
+                    grab_files_into_folders(createdirs, get_all_paths_in_map_with_ext(fs::canonicalize(samples_path).unwrap(), filetype));
+                },
+                _ => {
+                    eprintln!("error: invalid command");
+                    println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
+                },
+            }
+        },
+        5 => {
+            let cmd = &args[1];
+            let cmd2 = &args[2];
+            let t = &args[3];
+            let p =  &args[4];
+            match &cmd[..] {
+                "-c" => createdirs = true,
+                _ => {
+                    eprintln!("error: invalid command");
+                    println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
+                },
+            }
+            match &cmd2[..] {
+                "-f" => {
+                    filetype = t.to_string();
+                    samples_path = PathBuf::from(p);
+                    grab_files_into_folders(createdirs, get_all_paths_in_map_with_ext(fs::canonicalize(samples_path).unwrap(), filetype));
+                },
+                _ => {
+                    eprintln!("error: invalid command");
+                    println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
+                },
+            }
+        },
         // all the other cases
         _ => {
             // show a help message
-            println!("kroko file grabber:\nUsage: kroko [-c] PATH\n\n-c ... create dirs");
+            println!("kroko file grabber:\nUsage: kroko [-c][-f FILETYPE] PATH\n\n-c ... copy the file into folders \n-f ... only use files from this type");
         }
     }
     
